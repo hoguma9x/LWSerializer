@@ -38,7 +38,7 @@ namespace LWSerializer
             ulong result;
             using (var reader = new LwBinaryReader(bytes))
             {
-                result = reader.GetXxHash64(seed);
+                result = reader.GetXxHash64(seed, bytes.Length);
             }
             return result;
         }
