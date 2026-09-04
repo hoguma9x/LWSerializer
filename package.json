@@ -13,8 +13,5 @@
     "utility",
     "tools",
     "serializer"
-  ],
-  "dependencies": {
-    "com.unity.collections": "2.6.8"
-  }
+  ]
 }

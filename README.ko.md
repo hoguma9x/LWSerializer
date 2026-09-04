@@ -120,8 +120,3 @@ var hash = LwUtility.ToXxHash64(bytes);
             return result;
         }
 
-
-```
-Unity PackageManager GitUrl - https://github.com/hogumas/LWSerializer.git?path=src
-
-nuget - https://www.nuget.org/packages/LWBinarySerializer

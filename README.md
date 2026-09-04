@@ -117,8 +117,3 @@ Example of converting a managed object to binary and restoring it by implementin
             return result;
         }
 
-
-```
-Unity PackageManager GitUrl - https://github.com/hogumas/LWSerializer.git?path=src
-
-nuget - https://www.nuget.org/packages/LWBinarySerializer
