@@ -5,7 +5,10 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using LWSerializer.Formatters;
-
+using LWSerializer.Formatters.Unity;
+#if UNITY_5_3_OR_NEWER || UNITY_2017_1_OR_NEWER
+using Unity.Collections;
+#endif
 namespace LWSerializer
 {
     public delegate Type GenericFormatterTypeResolver(Type genericDefineType, Type genericArgumentType);
@@ -44,6 +47,12 @@ namespace LWSerializer
                     return CreateListFormatter<T>(type);
                 //Unity Collections Type
                 var args = type.GetGenericArguments();
+#if UNITY_5_3_OR_NEWER || UNITY_2017_1_OR_NEWER
+                if(genericTypeDefinition == typeof(Unity.Collections.NativeArray<>))
+                    return (ILWFormatter<T>)Activator.CreateInstance(typeof(NativeArrayFormatter<>).MakeGenericType(args[0]));
+                if(genericTypeDefinition == typeof(NativeReference<>))
+                    return (ILWFormatter<T>)Activator.CreateInstance(typeof(NativeReferenceFormatter<>).MakeGenericType(args[0]));                
+#endif
                 if (CustomGenericFormatterTypeResolver != null)
                 {
                     foreach (var del in CustomGenericFormatterTypeResolver.GetInvocationList())

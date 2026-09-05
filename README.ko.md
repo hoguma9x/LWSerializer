@@ -1,128 +1,94 @@
-[English](README.md) | [한국어](README.ko.md) 
+[English](README.md) | [한국어](README.ko.md)
+
 # LWSerializer
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![.NET Standard 2.1](https://img.shields.io/badge/.NET%20Standard-2.1-orange)
-![.NET](https://img.shields.io/badge/.NET-8.0%2B-blueviolet)
 
+LWSerializer는 C#용 바이너리 직렬화 라이브러리입니다.
 
-### LWSerializer는 .NET 환경을 위한 **경량 고성능 바이너리 직렬화 라이브러리**입니다.
-메모리 직접복사 방식을 통해 최소한의 오버헤드로 데이터를 처리하며, 직렬화 순서나 Padding값을 직접 설정할 수 있습니다 
-게임 개발 및 고성능 서버 환경에 최적화되어 있습니다.
+**unmanaged 구조체는 정의한 모습 그대로 직렬화할 수 있습니다.** Attribute, 코드 생성, `ILwSerializable` 구현이 필요하지 않습니다. Managed 객체는 `ILwSerializable`을 구현해 기록할 필드와 순서를 정할 수 있습니다.
 
+## 빠른 시작: unmanaged 구조체
 
-
-## Key Features
-* **Performance**: 이미 빠른 직렬화 API `MemoryPack`과 비슷한 빠른 직렬화/역직렬화 속도를 제공합니다.
-* **Simple Use**: 복잡한 설정 없이 `LwBinaryWriter/Reader`를 통해 즉시 사용 가능합니다.
-* **Manual Ordering**: 데이터의 직렬화 순서를 사용자가 직접 제어할 수 있어 유연한 프로토콜 설계가 가능합니다.
-* **Padding**: 구조체 변경에 대비한 Padding 기능을 지원하여, 데이터 구조 확장 시에도 하위 호환성을 유지할 수 있습니다.
-* **Memory Efficiency**:
-    * 모든 `unmanaged` 구조체 직렬화 지원
-    * Memory Aliasing 대응을 통한 안전하고 효율적인 메모리 접근
-    * 최대 **2GB** 크기의 대용량 데이터 직렬화 가능
-* **Collection Support**: `List<T>`, `Dictionary<TKey, TValue>` 등 주요 제네릭 컬렉션을 기본 지원합니다.
-* **Compatibility**: .NET Standard 2.1 지원으로 Unity 및 최신 .NET 환경 모두에서 사용 가능합니다.
-
-
-
-## Performance Comparison
-LWSerializer는 직접적인 메모리 복사 메커니즘을 사용하여 빠르고 GC가 발생하지않습니다
-| Library | Performance | Methodology |
-| :--- | :---: | :--- |
-| MemoryPack | Very High | Code Gen / Direct Memory Copy |
-| **LWSerializer** | Very High | **Direct Memory Copy** |
-| Protobuf-net | High | Contract Based |
-| Json.NET | Medium | Text Based |
-
-
-| Serializer            |    Serialize |  Deserialize |      Payload |
-| --------------------- | -----------: | -----------: | -----------: |
-| **LWSerializer**      | **2.119 µs** |     2.508 µs | **15,608 B** |
-| **MemoryPack 1.21.4** |     2.146 µs | **2.193 µs** | **15,608 B** |
-| JSON                  |   336.321 µs |   340.027 µs |     43,099 B |
-| BinaryFormatter       |  1261.279 µs |  1241.035 µs |     17,091 B |
-
-
-
-
-## Usage
-0. 'LwUtility.cs' 를 사용하여 간단하게 직렬화를 하는 예제입니다
 ```csharp
-var bytes = LwUtility.To("hello world");
-var data = LwUtility.From(bytes);
-var hash = LwUtility.ToXxHash64(bytes);
+public struct PlayerState
+{
+    public int Level;
+    public float Health;
+    public bool IsAlive;
+}
 
+var original = new PlayerState
+{
+    Level = 10,
+    Health = 75.5f,
+    IsAlive = true
+};
 
+byte[] bytes = LwUtility.To(original);
+PlayerState restored = LwUtility.From<PlayerState>(bytes);
 ```
 
-2. `unmanaged` 구조체를 바이너리로 변환하고 다시 복구하는 예제입니다.
+구조체 전체를 한 번에 복사합니다. 데이터를 쓰는 쪽과 읽는 쪽에서 타입과 메모리 배치를 호환되게 유지해야 합니다.
+
+### 출력 `byte[]`를 만들지 않는 방법
+
 ```csharp
-        public struct ExampleStruct
-        {
-            public int m_int;
-            public float m_float;
-            public bool m_bool;
-            public decimal m_decimal;
-        }
-        
-        public static byte[] Write(ExampleStruct exampleStruct)
-        {
-            using (var writer = new LwBinaryWriter())
-            {
-                writer.Write(exampleStruct);
-                return writer.ToArray(); //or writer.ToPtr()
-            }
-        }
-
-        public static ExampleStruct Read(byte[] bytes)
-        {
-            ExampleStruct result;
-            using (var reader = new LwBinaryReader(bytes))
-            {
-                reader.Read(out result);
-            }
-            return result;
-        }
-
-
+ReadOnlySpan<byte> bytes = LwUtility.To_Immediate(original);
+ConsumeImmediately(bytes);
 ```
-2. `managed` 구조체를 바이너리로 변환하고 다시 복구하는 예제입니다
+
+`To_Immediate`는 재사용 버퍼를 바라보는 span을 반환합니다. 다음 `LwUtility` 쓰기 전에 사용을 끝내고, 오래 보관해야 한다면 복사하세요.
+
+## Managed 객체
+
+`string`이나 배열 같은 managed 필드가 있다면 `ILwSerializable`을 구현합니다.
 
 ```csharp
-        public class ExampleClass : ILwSerializable
-        {
-            public int m_int;
-            public float m_float;
-            public string[] m_arr;
-            
-            void ILwSerializable.OnNativeWrite(LwBinaryWriter writer)
-            {
-                writer.Write(m_int, m_float, m_arr);
-            }
+public sealed class PlayerProfile : ILwSerializable
+{
+    public int Id;
+    public string Name;
 
-            void ILwSerializable.OnNativeRead(LwBinaryReader reader)
-            {
-                reader.Read(out m_int, out m_float, out m_arr);
-            }
-        }
-        
-        public static byte[] Write(ExampleClass exampleStruct)
-        {
-            using (var writer = new LwBinaryWriter())
-            {
-                writer.Write(exampleStruct);
-                return writer.ToArray(); //or writer.ToPtr()
-            }
-        }
+    public void OnNativeWrite(LwBinaryWriter writer)
+    {
+        writer.Write(Id, Name);
+    }
 
-        public static ExampleClass Read(byte[] bytes)
-        {
-            ExampleClass result;
-            using (var reader = new LwBinaryReader(bytes))
-            {
-                reader.Read(out result);
-            }
-            return result;
-        }
+    public void OnNativeRead(LwBinaryReader reader)
+    {
+        reader.Read(out Id, out Name);
+    }
+}
 
+byte[] bytes = LwUtility.To(new PlayerProfile { Id = 7, Name = "Rui" });
+PlayerProfile restored = LwUtility.From<PlayerProfile>(bytes);
+```
+
+문자열, 호환되는 배열, `List<T>`, `Dictionary<TKey, TValue>`, 선택 사항인 Unity Collections 타입도 지원합니다.
+
+## 사용 전 확인
+
+- 필드를 쓴 순서와 같은 순서로 읽고, 서로 호환되는 타입을 사용해야 합니다.
+- unmanaged 구조체는 원시 메모리 배치를 사용합니다. 빌드나 플랫폼이 달라도 데이터를 유지해야 한다면 레이아웃과 버전 규칙을 정해야 합니다.
+- 구조가 올바른 신뢰 가능한 데이터만 역직렬화하세요. Reader는 payload 경계를 검사하지 않습니다.
+- `LwUtility`는 정적 Writer와 Reader를 재사용합니다. 동시에 호출하거나 호출 안에서 다시 호출하면 안 됩니다.
+- `null` 문자열과 빈 문자열은 모두 빈 문자열로 복원됩니다. Padding은 공간만 확보하며 자동으로 버전 호환성을 만들지는 않습니다.
+
+## 벤치마크
+
+Ryzen 7 8845HS의 Unity 6000.3.14f1 Windows Editor debug 환경에서 한 번 실행한 결과입니다. 모든 라이브러리는 scalar 필드, `int[100]`, `Sample[100]`을 포함한 같은 값을 사용했습니다. 13회 warmup 뒤 round당 337회씩 7 round를 측정했으며, 표에는 round 평균의 중앙값과 최솟값 및 최댓값을 표시했습니다. 직렬화 출력 버퍼는 재사용했습니다.
+
+| Serializer | Payload | 직렬화 중앙값 | 직렬화 min / max | 역직렬화 중앙값 | 역직렬화 min / max |
+| :-- | --: | --: | --: | --: | --: |
+| LWSerializer (`To_Immediate`) | 6,072 B | 0.201 µs/op | 0.200 / 0.219 µs/op | 1.401 µs/op | 1.371 / 16.129 µs/op |
+| MemoryPack 1.21.4 | 6,068 B | 0.328 µs/op | 0.310 / 0.366 µs/op | 1.431 µs/op | 1.258 / 2.753 µs/op |
+| protobuf-net 3.2.56 | 6,572 B | 33.216 µs/op | 32.306 / 36.930 µs/op | 31.587 µs/op | 31.173 / 32.017 µs/op |
+| Unity JsonUtility + UTF-8 | 16,956 B | 128.052 µs/op | 125.201 / 254.309 µs/op | 127.505 µs/op | 124.999 / 137.551 µs/op |
+| BinaryFormatter (지원 종료) | 5,966 B | 437.315 µs/op | 420.774 / 797.089 µs/op | 355.845 µs/op | 349.899 / 1,130.578 µs/op |
+
+
+## 라이선스
+
+MIT. [LICENSE](LICENSE)를 확인하세요.
