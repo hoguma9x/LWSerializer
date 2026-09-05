@@ -30,13 +30,19 @@
 LWSerializer는 직접적인 메모리 복사 메커니즘을 사용하여 빠르고 GC가 발생하지않습니다
 | Library | Performance | Methodology |
 | :--- | :---: | :--- |
-| BinaryWriter | Very High | Direct Memory Copy + Manual |
 | MemoryPack | Very High | Code Gen / Direct Memory Copy |
 | **LWSerializer** | Very High | **Direct Memory Copy** |
 | Protobuf-net | High | Contract Based |
 | Json.NET | Medium | Text Based |
 
-벤치마킹은 추후 제공예정입니다
+
+| Serializer            |    Serialize |  Deserialize |      Payload |
+| --------------------- | -----------: | -----------: | -----------: |
+| **LWSerializer**      | **2.119 µs** |     2.508 µs | **15,608 B** |
+| **MemoryPack 1.21.4** |     2.146 µs | **2.193 µs** | **15,608 B** |
+| JSON                  |   336.321 µs |   340.027 µs |     43,099 B |
+| BinaryFormatter       |  1261.279 µs |  1241.035 µs |     17,091 B |
+
 
 
 

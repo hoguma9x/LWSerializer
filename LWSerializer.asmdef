@@ -1,9 +1,7 @@
 {
     "name": "LWSerializer",
     "rootNamespace": "LWSerializer",
-    "references": [
-        "Unity.Collections"
-    ],
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": true,
@@ -12,5 +10,5 @@
     "autoReferenced": true,
     "defineConstraints": [],
     "versionDefines": [],
-    "noEngineReferences": false
+    "noEngineReferences": true
 }

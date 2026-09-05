@@ -6,17 +6,14 @@ using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using LWSerializer.Formatters;
 
-#if UNITY_5_3_OR_NEWER || UNITY_2017_1_OR_NEWER
-using LWSerializer.Formatters.Unity;
-using Unity.Collections;
-#endif
-
 namespace LWSerializer
 {
+    public delegate Type GenericFormatterTypeResolver(Type genericDefineType, Type genericArgumentType);
     public static class LWFormatterProvider
     {
         private static readonly Dictionary<Type, bool> _unmanagedType = new Dictionary<Type, bool>();
-      
+        public static GenericFormatterTypeResolver CustomGenericFormatterTypeResolver;
+        
         public static ILWFormatter<T> GetFormatter<T>()
         {
             var type = typeof(T);
@@ -46,13 +43,17 @@ namespace LWSerializer
                 if (genericTypeDefinition == typeof(List<>))
                     return CreateListFormatter<T>(type);
                 //Unity Collections Type
-#if UNITY_5_3_OR_NEWER || UNITY_2017_1_OR_NEWER
                 var args = type.GetGenericArguments();
-                if(genericTypeDefinition == typeof(Unity.Collections.NativeArray<>))
-                    return (ILWFormatter<T>)Activator.CreateInstance(typeof(NativeArrayFormatter<>).MakeGenericType(args[0]));
-                if(genericTypeDefinition == typeof(NativeReference<>))
-                    return (ILWFormatter<T>)Activator.CreateInstance(typeof(NativeReferenceFormatter<>).MakeGenericType(args[0]));
-#endif
+                if (CustomGenericFormatterTypeResolver != null)
+                {
+                    foreach (var del in CustomGenericFormatterTypeResolver.GetInvocationList())
+                    {
+                        var targetType = del.DynamicInvoke(genericTypeDefinition, args[0]);
+                        if (targetType is Type t)
+                            return (ILWFormatter<T>)Activator.CreateInstance(t.MakeGenericType(args[0]));
+                    }
+                }
+               
             }
             
             // unmanaged Type
@@ -150,7 +151,7 @@ namespace LWSerializer
             }
 
             if (!_unmanagedType.TryGetValue(type, out var value))
-                _unmanagedType.Add(type, value = checkUnmanagedType(type));
+                _unmanagedType.TryAdd(type, value = checkUnmanagedType(type));
             return value;
         }
         #endregion
