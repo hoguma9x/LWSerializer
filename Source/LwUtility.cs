@@ -17,6 +17,15 @@ namespace LWSerializer
             return result;
         }
         
+        /// <summary>  객체를 바이너리 배열로 반환합니다. 단 반환된 배열은 즉시사용해야합니다 수정할수없고, From 작업을 수행하게되면 오염됩니다.</summary>
+        [STAThread]
+        public static ReadOnlySpan<byte> To_Immediate<T>(T serializable)
+        {
+            _sharedWriter.SetLength(0);
+            _sharedWriter.Write(serializable);
+            return _sharedWriter.ToArrayReadOnlySpan();
+        }
+        
         /// <summary> 바이너리 배열을  객체로 반환합니다</summary>
         public static unsafe T From<T>(byte[] bytes)
         {

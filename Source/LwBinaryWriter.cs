@@ -130,6 +130,12 @@ namespace LWSerializer
         {
             return ToPtr().AsSpan((int)_length).ToArray();
         }
+
+        public ReadOnlySpan<byte> ToArrayReadOnlySpan()
+        {
+            return ToPtr().AsSpan((int)_length);
+        }
+        
         
         public void Dispose()
         {
